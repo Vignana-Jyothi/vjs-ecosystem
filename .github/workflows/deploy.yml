@@ -21,5 +21,6 @@ jobs:
 
       - name: Build and Deploy with Docker Compose
         run: |
-          docker compose down
-          docker compose up -d --build
+          docker compose down --remove-orphans || true
+          docker rm -f vjse_frontend vjse_backend 2>/dev/null || true
+          docker compose up -d --build --force-recreate
