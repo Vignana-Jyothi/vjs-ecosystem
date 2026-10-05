@@ -24,6 +24,7 @@ interface ImportMeta {
 }
 
 interface LoginPageProps {
+  user?: { id: number; fullName?: string; name?: string; email: string; role: UserRole } | null;
   onLogin: (user: { id: number; name: string; email: string; role: UserRole }, token?: string) => void;
 }
 
@@ -67,12 +68,19 @@ function loadGoogleScript(callback: () => void) {
   document.head.appendChild(script);
 }
 
-export function LoginPage({ onLogin }: LoginPageProps) {
+export function LoginPage({ user, onLogin }: LoginPageProps) {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      const target = getRedirectPath(user.role, user.email);
+      navigate(target, { replace: true });
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     let active = true;

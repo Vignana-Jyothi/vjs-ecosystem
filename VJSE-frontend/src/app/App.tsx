@@ -29,7 +29,22 @@ type AppUser = {
   hasLinkedAccount?: boolean;
 };
 
-function ProtectedRoute({ user, children }: { user: AppUser | null, children: JSX.Element }) {
+function ProtectedRoute({
+  user,
+  authLoading,
+  children,
+}: {
+  user: AppUser | null;
+  authLoading: boolean;
+  children: JSX.Element;
+}) {
+  if (authLoading && !user) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1D9E75] border-t-transparent"></div>
+      </div>
+    );
+  }
   if (!user) {
     return <Navigate to="/login" replace />;
   }
@@ -386,7 +401,18 @@ const AccountLinkingModal = ({
 );
 
 export default function App() {
-  const [user, setUser] = useState<AppUser | null>(null);
+  // Synchronously restore user from localStorage on initialization
+  const [user, setUser] = useState<AppUser | null>(() => {
+    try {
+      const saved = localStorage.getItem("vjse_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [authLoading, setAuthLoading] = useState<boolean>(() => {
+    return !localStorage.getItem("vjse_user");
+  });
   const [toastMessage, setToastMessage] = useState("");
   const [showRocket, setShowRocket] = useState(false);
   const [showLinkingModal, setShowLinkingModal] = useState(false);
@@ -398,14 +424,33 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [toastMessage]);
 
-  // Restore authenticated session on mount
+  // 5-Reload Limit Guard
+  useEffect(() => {
+    const savedUser = localStorage.getItem("vjse_user");
+    if (!savedUser) {
+      sessionStorage.removeItem("vjse_reload_count");
+      return;
+    }
+
+    const MAX_RELOAD_LIMIT = 5;
+    const currentCount = parseInt(sessionStorage.getItem("vjse_reload_count") || "0", 10) + 1;
+    sessionStorage.setItem("vjse_reload_count", currentCount.toString());
+
+    if (currentCount >= MAX_RELOAD_LIMIT) {
+      sessionStorage.removeItem("vjse_reload_count");
+      handleLogout();
+      toast.error("Session ended: Reload limit reached (5 reloads). Please sign in again.");
+    }
+  }, []);
+
+  // Restore authenticated session on mount from server
   useEffect(() => {
     async function checkAuthSession() {
       try {
         const response = await api.get("/check-auth");
         const userPayload = response.data.user || response.data;
         if (userPayload && userPayload.email) {
-          setUser({
+          const freshUser: AppUser = {
             id: userPayload.id || 1,
             fullName: userPayload.fullName || userPayload.name || "VJ User",
             email: userPayload.email,
@@ -413,12 +458,23 @@ export default function App() {
             profileCompleted: Boolean(userPayload.profileCompleted),
             hasSeenWelcome: userPayload.hasSeenWelcome,
             hasLinkedAccount: userPayload.hasLinkedAccount,
-          });
+          };
+          setUser(freshUser);
+          localStorage.setItem("vjse_user", JSON.stringify(freshUser));
+        } else {
+          localStorage.removeItem("token");
+          localStorage.removeItem("vjse_user");
+          sessionStorage.removeItem("vjse_reload_count");
+          setUser(null);
         }
       } catch (err) {
         console.log("No active session found:", err);
         localStorage.removeItem("token");
+        localStorage.removeItem("vjse_user");
+        sessionStorage.removeItem("vjse_reload_count");
         setUser(null);
+      } finally {
+        setAuthLoading(false);
       }
     }
     checkAuthSession();
@@ -471,26 +527,30 @@ export default function App() {
     loginData: UserRole | { id: number; name: string; email: string; role: UserRole },
     token?: string
   ) {
+    sessionStorage.setItem("vjse_reload_count", "0");
     if (token) {
       localStorage.setItem("token", token);
     }
+    let newUser: AppUser;
     if (typeof loginData === "string") {
-      setUser({
+      newUser = {
         id: loginData === "Student" ? 1 : loginData === "Founder" ? 3 : 2,
         fullName: `Demo ${loginData}`,
         email: `${loginData.toLowerCase()}@vnrvjiet.in`,
         role: loginData,
         profileCompleted: true,
-      });
+      };
     } else {
-      setUser({
+      newUser = {
         id: loginData.id,
         fullName: (loginData as any).fullName || loginData.name || "VJ User",
         email: loginData.email,
         role: loginData.role,
         profileCompleted: Boolean((loginData as any).profileCompleted),
-      });
+      };
     }
+    setUser(newUser);
+    localStorage.setItem("vjse_user", JSON.stringify(newUser));
   }
 
   async function handleLogout() {
@@ -500,6 +560,8 @@ export default function App() {
       console.error("Logout request failed:", err);
     } finally {
       localStorage.removeItem("token");
+      localStorage.removeItem("vjse_user");
+      sessionStorage.removeItem("vjse_reload_count");
       setUser(null);
     }
   }
@@ -512,13 +574,15 @@ export default function App() {
     const res = await api.post("/api/users/complete-profile", { phone, year, branch });
     if (res.data && res.data.user) {
       const u = res.data.user;
-      setUser({
+      const updatedUser: AppUser = {
         id: u.id,
         fullName: u.name || u.fullName,
         email: u.email,
         role: u.role,
         profileCompleted: u.profileCompleted
-      });
+      };
+      setUser(updatedUser);
+      localStorage.setItem("vjse_user", JSON.stringify(updatedUser));
     } else {
       throw new Error("Invalid response from server");
     }
@@ -528,7 +592,11 @@ export default function App() {
     setShowRocket(false);
     try {
       await api.post('/api/users/mark-welcome-seen');
-      if (user) setUser({ ...user, hasSeenWelcome: true });
+      if (user) {
+        const updated = { ...user, hasSeenWelcome: true };
+        setUser(updated);
+        localStorage.setItem("vjse_user", JSON.stringify(updated));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -539,7 +607,11 @@ export default function App() {
       await api.post('/api/users/link-mentor-account', { leadId: matchedLead.id, confirmed: true });
       setShowLinkingModal(false);
       setShowRocket(true);
-      if (user) setUser({ ...user, hasLinkedAccount: true });
+      if (user) {
+        const updated = { ...user, hasLinkedAccount: true };
+        setUser(updated);
+        localStorage.setItem("vjse_user", JSON.stringify(updated));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -552,7 +624,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <div className="dark min-h-screen bg-[#0A0A0A] text-white">
-        {/* Sonner Toaster — fixes 13 & 14 */}
+        {/* Sonner Toaster */}
         <Toaster
           theme="dark"
           position="bottom-right"
@@ -578,29 +650,26 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate replace to="/network" />} />
             <Route path="/network" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+            <Route path="/login" element={<LoginPage user={user} onLogin={handleLogin} />} />
             <Route
               path="/student"
-              element={<ProtectedRoute user={user}><StudentPage user={user} onLogin={() => handleLogin("Student")} onSubmit={handleSubmitSuccess} /></ProtectedRoute>}
+              element={<ProtectedRoute user={user} authLoading={authLoading}><StudentPage user={user} onLogin={() => handleLogin("Student")} onSubmit={handleSubmitSuccess} /></ProtectedRoute>}
             />
             <Route
               path="/submit-lead"
-              element={<ProtectedRoute user={user}><SubmitLeadPage user={user} onLogin={() => handleLogin("Student")} onSubmit={handleSubmitSuccess} /></ProtectedRoute>}
+              element={<ProtectedRoute user={user} authLoading={authLoading}><SubmitLeadPage user={user} onLogin={() => handleLogin("Student")} onSubmit={handleSubmitSuccess} /></ProtectedRoute>}
             />
             <Route
               path="/leads"
-              element={<ProtectedRoute user={user}><LeadsPage user={user} onLogin={() => handleLogin("Mentor")} /></ProtectedRoute>}
+              element={<ProtectedRoute user={user} authLoading={authLoading}><LeadsPage user={user} onLogin={() => handleLogin("Mentor")} /></ProtectedRoute>}
             />
-            <Route path="/search" element={<ProtectedRoute user={user}><SearchPage user={user} onLogin={() => handleLogin("Founder")} /></ProtectedRoute>} />
-            <Route path="/founder" element={<ProtectedRoute user={user}><FounderPage user={user} onLogin={() => handleLogin("Founder")} /></ProtectedRoute>} />
-            <Route path="/volunteer" element={<ProtectedRoute user={user}><VolunteerPage user={user} onLogin={() => handleLogin("Volunteer")} /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute user={user}><AdminPage user={user} onLogin={() => handleLogin("Admin")} onUserRefresh={setUser} /></ProtectedRoute>} />
-            {/* Fix 4 — Mentor route always available (not conditional on user.role) */}
-            <Route path="/mentor" element={<ProtectedRoute user={user}><MentorPage user={user} onLogout={handleLogout} /></ProtectedRoute>} />
-            {/* Fix 17 — Legal pages accessible without login */}
+            <Route path="/search" element={<ProtectedRoute user={user} authLoading={authLoading}><SearchPage user={user} onLogin={() => handleLogin("Founder")} /></ProtectedRoute>} />
+            <Route path="/founder" element={<ProtectedRoute user={user} authLoading={authLoading}><FounderPage user={user} onLogin={() => handleLogin("Founder")} /></ProtectedRoute>} />
+            <Route path="/volunteer" element={<ProtectedRoute user={user} authLoading={authLoading}><VolunteerPage user={user} onLogin={() => handleLogin("Volunteer")} /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute user={user} authLoading={authLoading}><AdminPage user={user} onLogin={() => handleLogin("Admin")} onUserRefresh={setUser} /></ProtectedRoute>} />
+            <Route path="/mentor" element={<ProtectedRoute user={user} authLoading={authLoading}><MentorPage user={user} onLogout={handleLogout} /></ProtectedRoute>} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/terms" element={<TermsOfServicePage />} />
-            {/* Fix 12 — 404 catch-all */}
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
