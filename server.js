@@ -2222,10 +2222,83 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'An internal error occurred' });
 });
 
+// --- WEBSOCKET SERVER SETUP ---
+const { createServer } = require('http');
+const { Server } = require('socket.io');
+
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
+});
+
+// ============================================================
+// WEBSOCKET CONNECTION HANDLER — CN Unit 1: Full-Duplex TCP
+// ============================================================
+io.on('connection', (socket) => {
+  console.log(`[WebSocket] Client connected: ${socket.id}`);
+
+  socket.on('join-room', (data) => {
+    const { role, userId } = data;
+    if (role && userId) {
+      socket.join(role.toLowerCase());
+      socket.join(`user-${userId}`);
+      console.log(`[WebSocket] User ${userId} joined room: ${role.toLowerCase()}`);
+      socket.emit('connected', {
+        message: 'Real-time connection established',
+        socketId: socket.id,
+        room: role.toLowerCase(),
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log(`[WebSocket] Client disconnected: ${socket.id} reason: ${reason}`);
+  });
+
+  socket.on('error', (error) => {
+    console.error(`[WebSocket] Socket error: ${socket.id}`, error);
+  });
+});
+
+// ============================================================
+// WEBSOCKET EVENT EMITTER HELPERS
+// ============================================================
+function emitToVolunteers(event, data) {
+  io.to('volunteer').to('admin').emit(event, {
+    ...data,
+    timestamp: new Date().toISOString()
+  });
+  console.log(`[WebSocket] Emitted ${event} to volunteer and admin rooms`);
+}
+
+function emitToUser(userId, event, data) {
+  io.to(`user-${userId}`).emit(event, {
+    ...data,
+    timestamp: new Date().toISOString()
+  });
+  console.log(`[WebSocket] Emitted ${event} to user-${userId}`);
+}
+
+function emitToAdmins(event, data) {
+  io.to('admin').emit(event, {
+    ...data,
+    timestamp: new Date().toISOString()
+  });
+  console.log(`[WebSocket] Emitted ${event} to admin room`);
+}
+
 // --- GRACEFUL SHUTDOWN ---
-const server = app.listen(PORT, () => {
-  console.log(`Express API server running on http://localhost:${PORT}`);
-  console.log(`Database: SQLCipher-encrypted SQLite (dev.db)`);
+const server = httpServer.listen(PORT, () => {
+  console.log(`🚀 Express + WebSocket server running on http://localhost:${PORT}`);
+  console.log(`📂 Connected to SQLCipher-encrypted SQLite DB (dev.db)`);
+  console.log(`🔌 WebSocket server ready on ws://localhost:${PORT}`);
 });
 
 const shutdownSignals = ['SIGTERM', 'SIGINT'];
@@ -2253,3 +2326,4 @@ shutdownSignals.forEach(signal => {
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled promise rejection:', reason);
 });
+

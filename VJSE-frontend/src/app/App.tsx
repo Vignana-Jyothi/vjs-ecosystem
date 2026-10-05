@@ -18,6 +18,7 @@ import MentorPage from "./pages/MentorPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsOfServicePage from "./pages/TermsOfServicePage";
+import { useWebSocket } from "./hooks/useWebSocket";
 
 type AppUser = {
   id: number;
@@ -413,6 +414,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState<boolean>(() => {
     return !localStorage.getItem("vjse_user");
   });
+  const { on, isConnected } = useWebSocket(user);
   const [toastMessage, setToastMessage] = useState("");
   const [showRocket, setShowRocket] = useState(false);
   const [showLinkingModal, setShowLinkingModal] = useState(false);
