@@ -49,18 +49,6 @@ export function TopNav({ user, onLogout }: TopNavProps) {
                 <span className="font-semibold text-white">{user.fullName}</span>
                 <RoleBadge role={user.role} />
               </div>
-              <Link
-                to={
-                  user.role === "Student" ? "/student" :
-                  user.role === "Mentor" ? "/leads" :
-                  user.role === "Volunteer" ? "/volunteer" :
-                  user.role === "Admin" ? "/admin" :
-                  "/founder"
-                }
-                className="text-xs text-[#3B82F6] hover:text-[#2563EB] hover:underline font-semibold px-2"
-              >
-                Dashboard
-              </Link>
               <Button
                 variant="outline"
                 size="sm"

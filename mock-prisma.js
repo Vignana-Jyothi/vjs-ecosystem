@@ -9,7 +9,8 @@ const demoUsers = [
   { id: 4, name: "Suresh Menon", email: "lead@gmail.com", password: "lead123", role: "Mentor" },
   { id: 5, name: "Karnam Suhaas", email: "karnamsuhaas@gmail.com", password: "VJSEeco@2026", role: "Admin" },
   { id: 6, name: "Shubham", email: "shubham202098@gmail.com", password: "VJSEeco@2026", role: "Admin" },
-  { id: 7, name: "Akshay Nerella", email: "akshaynerella9@gmail.com", password: "VJSEeco@2026", role: "Admin" }
+  { id: 7, name: "Akshay Nerella", email: "akshaynerella9@gmail.com", password: "VJSEeco@2026", role: "Admin" },
+  { id: 8, name: "Dr. Suresh Menon", email: "mentor@gmail.com", password: "mentor123", role: "Mentor" }
 ];
 
 // Hash passwords dynamically on module load
@@ -29,7 +30,9 @@ const leads = [
   { id: 7, name: "Divya Patel", email: "divya@patel.com", domain: "RetailTech", organization: "Patel Consulting", skills: "Early Feedback, Advisory", verified: false, status: "Pending", invited: false, rejectionReason: "" },
   { id: 8, name: "Kabir Shah", email: "kabir@farmchain.com", domain: "AgriTech", organization: "FarmChain", skills: "Pilot Partnership, Advisory", verified: true, status: "Approved", invited: false, rejectionReason: "" },
   { id: 9, name: "Neelam Gupta", email: "neelam@bits.ac.in", domain: "EdTech", organization: "BITS Pilani", skills: "Advisory, Early Feedback", verified: true, status: "Approved", invited: false, rejectionReason: "" },
-  { id: 10, name: "Amit Desai", email: "amit@google.com", domain: "FinTech", organization: "Google India", skills: "Pilot Partnership, Advisory", verified: false, status: "Pending", invited: false, rejectionReason: "" }
+  { id: 10, name: "Amit Desai", email: "amit@google.com", domain: "FinTech", organization: "Google India", skills: "Pilot Partnership, Advisory", verified: false, status: "Pending", invited: false, rejectionReason: "" },
+  { id: 11, name: "Suresh Menon", email: "lead@gmail.com", domain: "AI & EdTech", organization: "Google India", skills: "Technical Mentorship, AI Advisory, Product Strategy", verified: true, status: "Approved", invited: true, inviteAccepted: true, sourcerId: 1, rejectionReason: "", createdAt: new Date().toISOString() },
+  { id: 12, name: "Dr. Suresh Menon", email: "mentor@gmail.com", domain: "FinTech & Cloud", organization: "Microsoft Research", skills: "Cloud Architecture, Scale Advisory, Seed Funding", verified: true, status: "Approved", invited: true, inviteAccepted: true, sourcerId: 1, rejectionReason: "", createdAt: new Date().toISOString() }
 ];
 
 const startupProfiles = [
@@ -40,20 +43,25 @@ const startupProfiles = [
 
 const connectionRequests = [
   { id: 1, userId: 3, leadId: 1, status: "Pending" },
-  { id: 2, userId: 3, leadId: 3, status: "Accepted" }
+  { id: 2, userId: 3, leadId: 3, status: "Accepted" },
+  { id: 3, userId: 3, leadId: 11, status: "Accepted" },
+  { id: 4, userId: 3, leadId: 12, status: "Accepted" }
 ];
 
 const chatMessages = [
   { id: 1, userId: 3, leadId: 3, sender: "Founder", content: "Hi Arjun, thanks for accepting my connection request!", createdAt: new Date().toISOString() },
   { id: 2, userId: 3, leadId: 3, sender: "Lead", content: "Hello Kabir! Happy to connect. I see you are working on VentureSpark. How can I help you today?", createdAt: new Date().toISOString() },
-  { id: 3, userId: 3, leadId: 3, sender: "Founder", content: "We're looking for feedback on our core learning algorithm. Since you're at IIIT-H, your advisory would be invaluable.", createdAt: new Date().toISOString() }
+  { id: 3, userId: 3, leadId: 3, sender: "Founder", content: "We're looking for feedback on our core learning algorithm. Since you're at IIIT-H, your advisory would be invaluable.", createdAt: new Date().toISOString() },
+  { id: 4, userId: 3, leadId: 11, sender: "Founder", content: "Hi Suresh, thank you for agreeing to connect with VentureSpark!", createdAt: new Date().toISOString() },
+  { id: 5, userId: 3, leadId: 11, sender: "Lead", content: "Hello Kabir! Glad to connect. I reviewed your pitch and would love to help you refine your AI evaluation architecture.", createdAt: new Date().toISOString() },
+  { id: 6, userId: 3, leadId: 11, sender: "Founder", content: "That would be incredible. Looking forward to collaborating!", createdAt: new Date().toISOString() }
 ];
 
-let nextUserId = 8;
-let nextLeadId = 11;
+let nextUserId = 9;
+let nextLeadId = 13;
 let nextStartupProfileId = 4;
-let nextConnectionRequestId = 3;
-let nextChatMessageId = 4;
+let nextConnectionRequestId = 5;
+let nextChatMessageId = 7;
 
 const loginLogs = [];
 let nextLoginLogId = 1;

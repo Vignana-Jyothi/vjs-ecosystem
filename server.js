@@ -2512,7 +2512,6 @@ io.on('connection', (socket) => {
 // WEBSOCKET EVENT EMITTER HELPERS
 // Called from API routes when key events happen
 // ============================================================
-
 function emitToVolunteers(event, data) {
   io.to('volunteer').to('admin').emit(event, {
     ...data,
@@ -2569,3 +2568,4 @@ shutdownSignals.forEach(signal => {
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled promise rejection:', reason);
 });
+
